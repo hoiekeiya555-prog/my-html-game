@@ -687,6 +687,7 @@
           while (!ok) {
             gx = Math.floor(Math.random() * (gridW - 2 * marginCells)) + marginCells;
             gy = Math.floor(Math.random() * (gridH - 2 * marginCells)) + marginCells;
+            if (!cellInsideDish(gx, gy)) continue;
             ok = true;
             for (const s of seeds) {
               if (Math.hypot(gx - s.gx, gy - s.gy) < 8) { ok = false; break; }
@@ -990,6 +991,7 @@
             for (let dx = -1; dx <= 1; dx++) {
               const x = s.gx + dx, y = s.gy + dy;
               if (x < 0 || x >= gridW || y < 0 || y >= gridH) continue;
+              if (!cellInsideDish(x, y)) continue;
               grid[y][x] = s.colonyId;
               ageGrid[y][x] = 0;
             }
@@ -1034,6 +1036,7 @@
         const counts = new Array(colonies.length).fill(0);
         if (!grid) return { counts, weakestColonyId: null };
         for (let y=0;y<gridH;y++) for (let x=0;x<gridW;x++) {
+          if (!cellInsideDish(x,y)) continue;
           const o = grid[y][x]; if (o>=0) counts[o]++;
         }
         let weakestColonyId=null, minCount=Infinity;
@@ -1624,6 +1627,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
 
           const colony=colonies[owner];
           const base=getGrowthRate(colony);
@@ -1632,6 +1636,7 @@
           const d=dirs[(Math.random()*4)|0];
           const nx=x+d[0], ny=y+d[1];
           if(nx<0||nx>=gridW||ny<0||ny>=gridH) continue;
+          if(!cellInsideDish(nx,ny)) continue;
 
           const targetOwner=grid[ny][nx];
           if(targetOwner===owner) continue;
@@ -1689,6 +1694,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
 
           const col=colonies[owner];
           if(col.attackLevel<=1 && (!col.mutationState||col.mutationState.killToxin===0)) continue;
@@ -1696,6 +1702,7 @@
           const d=dirs[(Math.random()*4)|0];
           const nx=x+d[0], ny=y+d[1];
           if(nx<0||nx>=gridW||ny<0||ny>=gridH) continue;
+          if(!cellInsideDish(nx,ny)) continue;
 
           const targetOwner=grid[ny][nx];
           if(targetOwner<0||targetOwner===owner) continue;
@@ -1730,6 +1737,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
           const col=colonies[owner];
           const ms=col.mutationState||{};
           if(ms.shortLived>0){
@@ -1743,8 +1751,12 @@
 
         for (let y = 0; y < gridH; y++) {
           for (let x = 0; x < gridW; x++) {
+            if (!cellInsideDish(x, y)) {
+              grid[y][x] = -1;
+              ageGrid[y][x] = 0;
+              continue;
+            }
             if (grid[y][x] < 0) continue;
-            if (!cellInsideDish(x, y)) continue;
 
             ageGrid[y][x] += STEP_SEC;
 
@@ -1777,11 +1789,12 @@
         const aliveCounts=new Array(colonies.length).fill(0);
 
         for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){
+          if(!cellInsideDish(x,y)) continue;
+          capacityCells++;
           const o=grid[y][x];
-          if(cellInsideDish(x,y)) capacityCells++;
           if(o>=0){
             aliveCounts[o]++; total++;
-            if(o===playerColonyId && cellInsideDish(x,y)) playerCells++;
+            if(o===playerColonyId) playerCells++;
           }
         }
 
@@ -2237,6 +2250,7 @@
         const aliveCounts=new Array(colonies.length).fill(0);
         if(grid){
           for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){
+            if(!cellInsideDish(x,y)) continue;
             const o=grid[y][x]; if(o>=0) aliveCounts[o]++;
           }
         }
