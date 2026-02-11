@@ -1,15 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-
-  <head>
-    <meta charset="UTF-8">
-    <title>Untitled</title>
-    
-
-  </head>
-    
-  <body>
-  <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -394,7 +383,7 @@
       <!-- Colony select -->
       <div id="colonySelectScreen">
         <h1>コロニー選択</h1>
-        <p>8つのコロニーのうち1つを選んで開始してください。</p>
+        <p>毎回ランダムに選ばれる4つのコロニーから1つを選んで開始してください。</p>
         <div id="colonyList"></div>
         <button class="overlayBtn" id="backToIntroBtn">戻る</button>
       </div>
@@ -589,7 +578,7 @@
         return true;
       }
 
-      // ===== 8コロニー初期化 =====
+      // ===== コロニー初期化（8種からランダム4種を抽出） =====
       function initColonies() {
         colonies = [];
         const colors = [
@@ -606,13 +595,18 @@
           { type: "item",       name: "アイテム収集", display: "オレンジコロニー" },
           { type: "hardy",      name: "タフネス型",   display: "ピンクコロニー" }
         ];
-        for (let i = 0; i < types.length; i++) {
+        const selected = [...types]
+          .map((t, idx) => ({ ...t, color: colors[idx] }))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 4);
+
+        for (let i = 0; i < selected.length; i++) {
           colonies.push({
             id: i,
-            color: colors[i],
-            type: types[i].type,
-            typeName: types[i].name,
-            displayName: types[i].display,
+            color: selected[i].color,
+            type: selected[i].type,
+            typeName: selected[i].name,
+            displayName: selected[i].display,
             growthLevel: 1,
             attackLevel: 1,
             defenseLevel: 1,
@@ -2181,8 +2175,4 @@
     });
   </script>
 </body>
-</html>
-    
-  </body>
-  
 </html>
