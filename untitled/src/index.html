@@ -14,6 +14,7 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      min-height: 100dvh;
     }
     #gameContainer {
       flex: 1;
@@ -23,6 +24,7 @@
       margin: 0 auto;
       width: 100%;
       position: relative;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #pausedBadge {
@@ -310,6 +312,74 @@
     }
 
     #resultText { display:none; margin-top:8px; font-weight:700; }
+
+    /* ===== Responsive optimization ===== */
+    @media (max-width: 900px) {
+      #gameContainer { max-width: 100%; }
+      #gameCanvas { max-width: min(94vw, 640px); }
+    }
+
+    @media (max-width: 768px) {
+      #itemLegend { grid-template-columns: 1fr; }
+      #logPanel { min-height: 58px; max-height: 76px; }
+      #topBar { padding: 6px 10px; }
+      #topLine {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        align-items: center;
+      }
+      #controlButtons {
+        grid-column: span 2;
+        margin-left: 0;
+      }
+      .ctrlBtn {
+        flex: 1;
+        min-height: 42px;
+        padding: 8px 12px;
+      }
+      #upgrades {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      #defenseBtn { grid-column: span 2; }
+      #skills {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .upgradeBtn, .skillBtn {
+        min-height: 62px;
+        padding: 10px 10px;
+      }
+      .skillBtn { flex: none; }
+      #messageBox {
+        width: min(96vw, 560px);
+        max-height: calc(100dvh - 16px);
+        overflow: auto;
+      }
+      .overlayBtn { min-height: 44px; }
+      .difficultyBtn { min-height: 42px; }
+    }
+
+    @media (max-width: 480px) {
+      #itemRow, #logRow, #canvasWrapper, #topBar { padding-left: 8px; padding-right: 8px; }
+      #bottomPanel {
+        padding: 8px;
+        gap: 6px;
+      }
+      #upgrades, #skills { gap: 6px; }
+      #colonyList { grid-template-columns: 1fr; }
+      .colonyCard { min-height: 108px; }
+      .label { font-size: 11px; }
+      .level, .cost, .cooldown { font-size: 10px; }
+    }
+
+    @media (min-width: 1200px) {
+      #gameContainer { max-width: 1080px; }
+      #topBar { font-size: 13px; }
+      .upgradeBtn, .skillBtn { font-size: 13px; }
+      #messageBox { width: min(620px, 92vw); }
+    }
   </style>
 </head>
 <body>
