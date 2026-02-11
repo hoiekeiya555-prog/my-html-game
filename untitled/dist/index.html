@@ -1,15 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-
-  <head>
-    <meta charset="UTF-8">
-    <title>Untitled</title>
-    
-
-  </head>
-    
-  <body>
-  <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -25,6 +14,7 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      min-height: 100dvh;
     }
     #gameContainer {
       flex: 1;
@@ -34,6 +24,7 @@
       margin: 0 auto;
       width: 100%;
       position: relative;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #pausedBadge {
@@ -262,6 +253,33 @@
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
     }
+    #difficultyRow {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #0b1220;
+    }
+    #difficultyButtons {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .difficultyBtn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #334155;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .difficultyBtn.active {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 2px rgba(34,197,94,0.2) inset;
+    }
     .colonyCard {
       padding: 10px 10px 8px;
       background: #0b1220;
@@ -294,6 +312,74 @@
     }
 
     #resultText { display:none; margin-top:8px; font-weight:700; }
+
+    /* ===== Responsive optimization ===== */
+    @media (max-width: 900px) {
+      #gameContainer { max-width: 100%; }
+      #gameCanvas { max-width: min(94vw, 640px); }
+    }
+
+    @media (max-width: 768px) {
+      #itemLegend { grid-template-columns: 1fr; }
+      #logPanel { min-height: 58px; max-height: 76px; }
+      #topBar { padding: 6px 10px; }
+      #topLine {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        align-items: center;
+      }
+      #controlButtons {
+        grid-column: span 2;
+        margin-left: 0;
+      }
+      .ctrlBtn {
+        flex: 1;
+        min-height: 42px;
+        padding: 8px 12px;
+      }
+      #upgrades {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      #defenseBtn { grid-column: span 2; }
+      #skills {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .upgradeBtn, .skillBtn {
+        min-height: 62px;
+        padding: 10px 10px;
+      }
+      .skillBtn { flex: none; }
+      #messageBox {
+        width: min(96vw, 560px);
+        max-height: calc(100dvh - 16px);
+        overflow: auto;
+      }
+      .overlayBtn { min-height: 44px; }
+      .difficultyBtn { min-height: 42px; }
+    }
+
+    @media (max-width: 480px) {
+      #itemRow, #logRow, #canvasWrapper, #topBar { padding-left: 8px; padding-right: 8px; }
+      #bottomPanel {
+        padding: 8px;
+        gap: 6px;
+      }
+      #upgrades, #skills { gap: 6px; }
+      #colonyList { grid-template-columns: 1fr; }
+      .colonyCard { min-height: 108px; }
+      .label { font-size: 11px; }
+      .level, .cost, .cooldown { font-size: 10px; }
+    }
+
+    @media (min-width: 1200px) {
+      #gameContainer { max-width: 1080px; }
+      #topBar { font-size: 13px; }
+      .upgradeBtn, .skillBtn { font-size: 13px; }
+      #messageBox { width: min(620px, 92vw); }
+    }
   </style>
 </head>
 <body>
@@ -394,7 +480,15 @@
       <!-- Colony select -->
       <div id="colonySelectScreen">
         <h1>コロニー選択</h1>
-        <p>8つのコロニーのうち1つを選んで開始してください。</p>
+        <p>8つのコロニーはすべてシャーレ上に登場します。1つを選んで自分だけ強化し、残りはCPUが自動育成します。</p>
+        <div id="difficultyRow">
+          <div class="colonyMeta">CPU難易度を選択</div>
+          <div id="difficultyButtons">
+            <button class="difficultyBtn" id="difficultyEasyBtn">EASY</button>
+            <button class="difficultyBtn active" id="difficultyNormalBtn">NORMAL</button>
+            <button class="difficultyBtn" id="difficultyHardBtn">HARD</button>
+          </div>
+        </div>
         <div id="colonyList"></div>
         <button class="overlayBtn" id="backToIntroBtn">戻る</button>
       </div>
@@ -418,6 +512,9 @@
       const introScreen = document.getElementById("introScreen");
       const colonySelectScreen = document.getElementById("colonySelectScreen");
       const colonyList = document.getElementById("colonyList");
+      const difficultyEasyBtn = document.getElementById("difficultyEasyBtn");
+      const difficultyNormalBtn = document.getElementById("difficultyNormalBtn");
+      const difficultyHardBtn = document.getElementById("difficultyHardBtn");
       const startButton = document.getElementById("startButton");
       const backToIntroBtn = document.getElementById("backToIntroBtn");
       const restartButton = document.getElementById("restartButton");
@@ -500,6 +597,13 @@
 
       let isPaused = false;
       let showStatus = true;
+
+      const AI_DIFFICULTY_SETTINGS = {
+        easy:   { label: "EASY", energyGain: 0.78, upgradeChance: 0.40, skillBias: 0.82, reactiveBias: 0.85 },
+        normal: { label: "NORMAL", energyGain: 1.00, upgradeChance: 0.50, skillBias: 1.00, reactiveBias: 1.00 },
+        hard:   { label: "HARD", energyGain: 1.28, upgradeChance: 0.62, skillBias: 1.20, reactiveBias: 1.20 }
+      };
+      let aiDifficulty = "normal";
 
       const logs = [];
       function addLog(message, type = "info") {
@@ -589,7 +693,7 @@
         return true;
       }
 
-      // ===== 8コロニー初期化 =====
+      // ===== 8コロニー初期化（全て登場） =====
       function initColonies() {
         colonies = [];
         const colors = [
@@ -653,6 +757,7 @@
           while (!ok) {
             gx = Math.floor(Math.random() * (gridW - 2 * marginCells)) + marginCells;
             gy = Math.floor(Math.random() * (gridH - 2 * marginCells)) + marginCells;
+            if (!cellInsideDish(gx, gy)) continue;
             ok = true;
             for (const s of seeds) {
               if (Math.hypot(gx - s.gx, gy - s.gy) < 8) { ok = false; break; }
@@ -876,6 +981,51 @@
         updateSkillUI();
       }
 
+
+      function updateDifficultyButtons() {
+        const activeMap = {
+          easy: difficultyEasyBtn,
+          normal: difficultyNormalBtn,
+          hard: difficultyHardBtn
+        };
+        [difficultyEasyBtn, difficultyNormalBtn, difficultyHardBtn].forEach(btn => btn.classList.remove("active"));
+        activeMap[aiDifficulty]?.classList.add("active");
+      }
+
+      function chooseAIUpgradeKind(colony, myCells, topEnemyCells, weakRatio, totalCells) {
+        const pressure = topEnemyCells > 0 ? myCells / topEnemyCells : 1;
+        const lowPresence = totalCells > 0 && (myCells / totalCells) < 0.12;
+
+        const weights = { growth: 1, attack: 1, defense: 1 };
+
+        if (lowPresence || weakRatio < 0.2) {
+          weights.growth += 2.8;
+          weights.defense += 1.2;
+        }
+        if (pressure < 0.7) {
+          weights.defense += 2.2;
+          weights.growth += 1.0;
+        } else if (pressure > 1.15) {
+          weights.attack += 2.0;
+          weights.growth += 0.6;
+        }
+
+        if (colony.type === "aggressive") weights.attack += 1.8;
+        if (colony.type === "defensive" || colony.type === "hardy") weights.defense += 1.8;
+        if (colony.type === "growth") weights.growth += 1.8;
+        if (colony.type === "toxin") weights.attack += 1.4;
+        if (colony.type === "item") weights.growth += 0.6;
+
+        const entries = Object.entries(weights);
+        const total = entries.reduce((sum, [, w]) => sum + w, 0);
+        let r = Math.random() * total;
+        for (const [kind, w] of entries) {
+          r -= w;
+          if (r <= 0) return kind;
+        }
+        return "growth";
+      }
+
       function startSelecting() {
         gameState = "select";
         grid = null; ageGrid = null;
@@ -911,6 +1061,7 @@
             for (let dx = -1; dx <= 1; dx++) {
               const x = s.gx + dx, y = s.gy + dy;
               if (x < 0 || x >= gridW || y < 0 || y >= gridH) continue;
+              if (!cellInsideDish(x, y)) continue;
               grid[y][x] = s.colonyId;
               ageGrid[y][x] = 0;
             }
@@ -924,7 +1075,7 @@
         gameState = "running";
         updateUpgradeUI();
         updateLegendUI();
-        addLog("ゲーム開始: " + colonies[playerColonyId].displayName, "info");
+        addLog("ゲーム開始: " + colonies[playerColonyId].displayName + " / CPU難易度: " + AI_DIFFICULTY_SETTINGS[aiDifficulty].label, "info");
       }
 
       function endGame(win, ratio) {
@@ -955,6 +1106,7 @@
         const counts = new Array(colonies.length).fill(0);
         if (!grid) return { counts, weakestColonyId: null };
         for (let y=0;y<gridH;y++) for (let x=0;x<gridW;x++) {
+          if (!cellInsideDish(x,y)) continue;
           const o = grid[y][x]; if (o>=0) counts[o]++;
         }
         let weakestColonyId=null, minCount=Infinity;
@@ -1421,22 +1573,22 @@
 
       // ===== AI行動 =====
       function aiTakeActions(aliveCounts,totalCells){
+        const diff = AI_DIFFICULTY_SETTINGS[aiDifficulty] || AI_DIFFICULTY_SETTINGS.normal;
+
         for(const c of colonies){
           if(!c.alive || c.id===playerColonyId) continue;
           const myCells=aliveCounts[c.id]||0;
           const weakRatio=totalCells>0?myCells/totalCells:0;
 
-          const upgradeOptions=["growth","attack","defense"];
-          if(c.type==="aggressive") upgradeOptions.push("attack","attack");
-          if(c.type==="defensive") upgradeOptions.push("defense","defense");
-          if(c.type==="growth") upgradeOptions.push("growth","growth");
-          if(c.type==="hardy") upgradeOptions.push("defense");
-          if(c.type==="toxin") upgradeOptions.push("attack");
-          if(c.type==="item") upgradeOptions.push("growth","attack","defense");
+          let topEnemyCells = 0;
+          for (let i = 0; i < colonies.length; i++) {
+            if (i === c.id || !colonies[i].alive) continue;
+            topEnemyCells = Math.max(topEnemyCells, aliveCounts[i] || 0);
+          }
 
-          const choice=upgradeOptions[(Math.random()*upgradeOptions.length)|0];
+          const choice = chooseAIUpgradeKind(c, myCells, topEnemyCells, weakRatio, totalCells);
           const cost=upgradeCost(c,choice);
-          if(c.energy>=cost && Math.random()<0.5){
+          if(c.energy>=cost && Math.random()<diff.upgradeChance){
             c.energy-=cost; c[choice+"Level"]++;
           }
 
@@ -1446,22 +1598,26 @@
           if(c.type==="trickster") toxinProb+=0.05;
           if(c.type==="toxin") toxinProb+=0.07;
 
+          nutProb *= diff.skillBias;
+          shieldProb *= diff.skillBias;
+          toxinProb *= diff.skillBias;
+
           if(c.energy>=NUTRIENT_COST && c.nutrientCooldown<=0 &&
-             (weakRatio<0.25||Math.random()<nutProb)){
+             (weakRatio<0.25*diff.reactiveBias||Math.random()<nutProb)){
             c.energy-=NUTRIENT_COST;
             c.nutrientTime=NUTRIENT_DURATION;
             c.nutrientCooldown=NUTRIENT_COOLDOWN;
           }
 
           if(c.energy>=SHIELD_COST && c.shieldCooldown<=0 &&
-             (weakRatio<0.3||Math.random()<shieldProb)){
+             (weakRatio<0.3*diff.reactiveBias||Math.random()<shieldProb)){
             c.energy-=SHIELD_COST;
             c.shieldTime=SHIELD_DURATION;
             c.shieldCooldown=SHIELD_COOLDOWN;
           }
 
           if(c.energy>=TOXIN_COST && c.toxinCooldown<=0 &&
-             (weakRatio<0.2||Math.random()<toxinProb)){
+             (weakRatio<0.2*diff.reactiveBias||Math.random()<toxinProb)){
             c.energy-=TOXIN_COST;
             c.toxinCooldown=TOXIN_COOLDOWN;
 
@@ -1482,7 +1638,7 @@
 
           const sp = SPECIALS[c.type];
           if (sp && c.specialCooldown<=0 && c.energy>=sp.cost) {
-            let useProb = 0.05;
+            let useProb = 0.05 * diff.skillBias;
             if (weakRatio < 0.2) useProb += 0.12;
             if (c.type==="item" && items.length>0) useProb += 0.12;
             if (c.type==="growth" && weakRatio < 0.35) useProb += 0.08;
@@ -1541,6 +1697,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
 
           const colony=colonies[owner];
           const base=getGrowthRate(colony);
@@ -1549,6 +1706,7 @@
           const d=dirs[(Math.random()*4)|0];
           const nx=x+d[0], ny=y+d[1];
           if(nx<0||nx>=gridW||ny<0||ny>=gridH) continue;
+          if(!cellInsideDish(nx,ny)) continue;
 
           const targetOwner=grid[ny][nx];
           if(targetOwner===owner) continue;
@@ -1606,6 +1764,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
 
           const col=colonies[owner];
           if(col.attackLevel<=1 && (!col.mutationState||col.mutationState.killToxin===0)) continue;
@@ -1613,6 +1772,7 @@
           const d=dirs[(Math.random()*4)|0];
           const nx=x+d[0], ny=y+d[1];
           if(nx<0||nx>=gridW||ny<0||ny>=gridH) continue;
+          if(!cellInsideDish(nx,ny)) continue;
 
           const targetOwner=grid[ny][nx];
           if(targetOwner<0||targetOwner===owner) continue;
@@ -1647,6 +1807,7 @@
           const y=(Math.random()*gridH)|0;
           const owner=grid[y][x];
           if(owner<0) continue;
+          if(!cellInsideDish(x,y)) continue;
           const col=colonies[owner];
           const ms=col.mutationState||{};
           if(ms.shortLived>0){
@@ -1660,8 +1821,12 @@
 
         for (let y = 0; y < gridH; y++) {
           for (let x = 0; x < gridW; x++) {
+            if (!cellInsideDish(x, y)) {
+              grid[y][x] = -1;
+              ageGrid[y][x] = 0;
+              continue;
+            }
             if (grid[y][x] < 0) continue;
-            if (!cellInsideDish(x, y)) continue;
 
             ageGrid[y][x] += STEP_SEC;
 
@@ -1694,11 +1859,12 @@
         const aliveCounts=new Array(colonies.length).fill(0);
 
         for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){
+          if(!cellInsideDish(x,y)) continue;
+          capacityCells++;
           const o=grid[y][x];
-          if(cellInsideDish(x,y)) capacityCells++;
           if(o>=0){
             aliveCounts[o]++; total++;
-            if(o===playerColonyId && cellInsideDish(x,y)) playerCells++;
+            if(o===playerColonyId) playerCells++;
           }
         }
 
@@ -1717,7 +1883,8 @@
           const c=colonies[i];
           if(!c.alive||i===playerColonyId) continue;
           const mult=getScoreMultiplier(c);
-          c.energy += (aliveCounts[i]||0) * 0.0016 * mult;
+          const diff = AI_DIFFICULTY_SETTINGS[aiDifficulty] || AI_DIFFICULTY_SETTINGS.normal;
+          c.energy += (aliveCounts[i]||0) * 0.0016 * mult * diff.energyGain;
         }
 
         aiTakeActions(aliveCounts,total);
@@ -2026,6 +2193,7 @@
         colonySelectScreen.style.display="block";
         restartButton.style.display="none";
         resultText.style.display="none";
+        updateDifficultyButtons();
       }
 
       function buildColonyCards(){
@@ -2071,6 +2239,10 @@
       }
 
       // ===== イベント =====
+      difficultyEasyBtn.addEventListener("click", ()=>{ aiDifficulty = "easy"; updateDifficultyButtons(); });
+      difficultyNormalBtn.addEventListener("click", ()=>{ aiDifficulty = "normal"; updateDifficultyButtons(); });
+      difficultyHardBtn.addEventListener("click", ()=>{ aiDifficulty = "hard"; updateDifficultyButtons(); });
+
       startButton.addEventListener("click", ()=>{
         startSelecting();
         showColonySelect();
@@ -2148,6 +2320,7 @@
         const aliveCounts=new Array(colonies.length).fill(0);
         if(grid){
           for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){
+            if(!cellInsideDish(x,y)) continue;
             const o=grid[y][x]; if(o>=0) aliveCounts[o]++;
           }
         }
@@ -2181,8 +2354,4 @@
     });
   </script>
 </body>
-</html>
-    
-  </body>
-  
 </html>
